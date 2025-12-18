@@ -652,16 +652,28 @@ static void _fillEllipse(int16_t x0, int16_t y0, int16_t rx, int16_t ry, uint16_
 static void _renderEye(OrbitoRobot::ActionModule::EyeParams p) {
     uint16_t COLOR_BG = 0xFFFF;
     uint16_t COLOR_FG = 0x0000;
+    int16_t current_h = p.height * p.open_factor;
+    if (current_h < 2) current_h = 2;
+    Orbito.Display.fillRect( p.x - (p.width / 2) - 2, p.y - (p.height / 2) - 2, p.width + 4, p.height + 4, COLOR_BG);
+    _fillEllipse(p.x, p.y, p.width / 2, current_h / 2, COLOR_FG);
     int16_t brow_radius = (p.width / 2) + (p.width / 4);
     int16_t brow_y = p.y - brow_radius * 2 + 10;
-    switch (p.eyebrown)
+    if (p.has_eyebrown)
     {
-        case 1:
-            Orbito.Display.fillCircle(p.x - (p.width / 2), brow_y + 20, brow_radius, COLOR_BG);
-            Orbito.Display.fillCircle(p.x + (p.width / 2), brow_y + 20, brow_radius, COLOR_BG);
-            break;
-        case 2:
-            break;
+        if (p.is_left_eye)
+        {
+            switch (p.eyebr_type)
+            {
+                case 1: Orbito.Display.fillCircle(p.x - (p.width / 2), brow_y + 20, brow_radius, COLOR_BG); break;
+                case 2: Orbito.Display.fillTriangle(p.x + (p.width / 2), p.y, p.x - p.width, p.y - (p.height / 2), p.x + (p.width / 2), p.y - (p.height / 2), COLOR_BG);
+            }
+        } else {
+            switch (p.eyebr_type)
+            {
+                case 1: Orbito.Display.fillCircle(p.x + (p.width / 2), brow_y + 20, brow_radius, COLOR_BG); break;
+                case 2: Orbito.Display.fillTriangle(p.x - (p.width / 2), p.y, p.x + p.width, p.y - (p.height / 2), p.x - (p.width / 2), p.y - (p.height / 2), COLOR_BG);
+            }
+        }
     }
 }
 
@@ -674,18 +686,30 @@ static void _redrawEyes(float override_open = -1.0)
     int16_t GAP      = 85;
     int16_t CENTER_X = 160;
     // Basic configuration
-    OrbitoRobot::ActionModule::EyeParams left  = { (int16_t)(CENTER_X - GAP), EYE_Y, EYE_W, EYE_H, _current_pupil_x, _current_pupil_y, 20, 0.8, 0 };
-    OrbitoRobot::ActionModule::EyeParams right = { (int16_t)(CENTER_X + GAP), EYE_Y, EYE_W, EYE_H, _current_pupil_x, _current_pupil_y, 20, 0.8, 0 };
+    OrbitoRobot::ActionModule::EyeParams left  = { (int16_t)(CENTER_X - GAP), EYE_Y, EYE_W, EYE_H, _current_pupil_x, _current_pupil_y, 20, 0.8, true,  0 };
+    OrbitoRobot::ActionModule::EyeParams right = { (int16_t)(CENTER_X + GAP), EYE_Y, EYE_W, EYE_H, _current_pupil_x, _current_pupil_y, 20, 0.8, false, 0 };
     // Apply actual emotion
     switch (_current_emotion)
     {
         case OrbitoRobot::ActionModule::WORRY:
-            left.eyebrown  = 1;
-            left.open_factor   = 0.8;
-            right.eyebrown = 1;
-            right.open_factor  = 0.8;
+            left.open_factor = 0.8;
+            left.eyebr_type = 1;
+            left.has_eyebrown = true;
+            left.is_left_eye = true;
+            right.open_factor = 0.8;
+            right.eyebr_type = 1;
+            right.has_eyebrown = true;
+            right.is_left_eye = false;
             break;
         case OrbitoRobot::ActionModule::ANGRY:
+            left.open_factor = 0.8;
+            left.eyebr_type = 2;
+            left.has_eyebrown = true;
+            left.is_left_eye = true;
+            right.open_factor = 0.8;
+            right.eyebr_type = 2;
+            right.has_eyebrown = true;
+            right.is_left_eye = false;
             break;
         case OrbitoRobot::ActionModule::HAPPY:
             break;
@@ -718,6 +742,7 @@ static void _renderMouth(OrbitoRobot::ActionModule::MouthParams p)
             _drawThickArc(p.x, p.y + 80, 100, 10, 225, 315, COLOR_FG);
             break;
         case 1: // ANGRY
+            _drawThickArc(p.x, p.y + 80, 100, 10, 240, 300, COLOR_FG);
             break;
         case 2: // HAPPY
             _drawThickArc(p.x, p.y - 80, 100, 10, 60, 120, COLOR_FG);
@@ -792,12 +817,8 @@ void OrbitoRobot::ActionModule::lookAt(int x, int y)
  */
 void OrbitoRobot::ActionModule::blink()
 {
-    _redrawEyes(0.6);
-    delay(20);
     _redrawEyes(0.1);
     delay(100);
-    _redrawEyes(0.4);
-    delay(20);
     _redrawEyes(-1.0);
 }
 

@@ -273,8 +273,10 @@ class OrbitoRobot {
                 int16_t pupil_x;      // Position X pupil (-15 to 15)
                 int16_t pupil_y;      // Position Y pupil (-15 to 15)
                 int16_t margin;       // Size difference between Eye and Pupil
-                float   open_factor;  // 0.0 (Close) a 1.0 (Open)
-                uint8_t eyebrown;     // Flag to draw an eyebrown
+                float open_factor;    // 0.0 (Close) a 1.0 (Open)
+                bool has_eyebrown;    // Flag to draw an eyebrown
+                bool is_left_eye;     // Flag to draw left or right eyebrown
+                uint8_t eyebr_type;   // ID of eyebrown type to draw
             };
             struct MouthParams {
                 int16_t x;           // Position X (Center)
