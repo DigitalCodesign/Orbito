@@ -665,13 +665,15 @@ static void _renderEye(OrbitoRobot::ActionModule::EyeParams p) {
             switch (p.eyebr_type)
             {
                 case 1: Orbito.Display.fillCircle(p.x - (p.width / 2), brow_y + 20, brow_radius, COLOR_BG); break;
-                case 2: Orbito.Display.fillTriangle(p.x + (p.width / 2), p.y, p.x - p.width, p.y - (p.height / 2), p.x + (p.width / 2), p.y - (p.height / 2), COLOR_BG);
+                case 2: Orbito.Display.fillTriangle(p.x + (p.width / 2), p.y, p.x - p.width, p.y - (p.height / 2), p.x + (p.width / 2), p.y - (p.height / 2), COLOR_BG); break;
+                case 3: Orbito.Display.fillCircle(p.x, p.y - (current_h / 5), p.width - (p.width / 3), COLOR_BG); break;
             }
         } else {
             switch (p.eyebr_type)
             {
                 case 1: Orbito.Display.fillCircle(p.x + (p.width / 2), brow_y + 20, brow_radius, COLOR_BG); break;
-                case 2: Orbito.Display.fillTriangle(p.x - (p.width / 2), p.y, p.x + p.width, p.y - (p.height / 2), p.x - (p.width / 2), p.y - (p.height / 2), COLOR_BG);
+                case 2: Orbito.Display.fillTriangle(p.x - (p.width / 2), p.y, p.x + p.width, p.y - (p.height / 2), p.x - (p.width / 2), p.y - (p.height / 2), COLOR_BG); break;
+                case 3: Orbito.Display.fillCircle(p.x, p.y - (current_h / 5), p.width - (p.width / 3), COLOR_BG); break;
             }
         }
     }
@@ -716,10 +718,22 @@ static void _redrawEyes(float override_open = -1.0)
         case OrbitoRobot::ActionModule::NEUTRAL:
             break;
         case OrbitoRobot::ActionModule::SURPRISE:
+            left.open_factor = 1.0;
+            right.open_factor = 1.0;
             break;
         case OrbitoRobot::ActionModule::SLEEPY:
+            left.open_factor = 0.4;
+            right.open_factor = 0.3;
             break;
         case OrbitoRobot::ActionModule::SAD:
+            left.open_factor = 0.8;
+            left.eyebr_type = 3;
+            left.has_eyebrown = true;
+            left.is_left_eye = true;
+            right.open_factor = 0.8;
+            right.eyebr_type = 3;
+            right.has_eyebrown = true;
+            right.is_left_eye = false;
             break;
     }
     if (override_open >= 0) {
@@ -751,10 +765,14 @@ static void _renderMouth(OrbitoRobot::ActionModule::MouthParams p)
             Orbito.Display.fillRoundRect(x0, y0, p.width, p.height, p.height / 2, COLOR_FG);
             break;
         case 4: // SURPRISE
+            Orbito.Display.fillRoundRect(x0, y0 - 30, p.width, 70, 20, COLOR_FG);
+            Orbito.Display.fillRect(x0, y0 + 25, p.width, 30, COLOR_BG);
             break;
         case 5: // SLEEPY
+            Orbito.Display.fillRoundRect(x0 + (p.width / 4), y0, p.width / 2, p.height, p.height / 2, COLOR_FG);
             break;
         case 6: // SAD
+            _drawThickArc(p.x, p.y + 80, 100, 10, 225, 315, COLOR_FG);
             break;
     }
 }
