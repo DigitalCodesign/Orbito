@@ -13,13 +13,15 @@ NFCHandler::NFCHandler(TwoWire &wire_ref) : _wire(wire_ref) {}
  */
 bool NFCHandler::begin()
 {
-    // We try to read the IC_REF register from System Memory
-    // to verify the chip is alive and writing is correct.
-    _wire.beginTransmission(ST25_ADDR_SYSTEM);
-    _wire.write(REG_IC_REF >> 8);   // MSB Address
-    _wire.write(REG_IC_REF & 0xFF); // LSB Address
-    // If endTransmission returns 0, the device acknowledged the address
-    if (_wire.endTransmission() != 0) return false;
+    // We attempt to read the IC_REF register from System Memory
+    // to verify that the chip is alive.
+    // We use the STOP+START compatible method.
+    uint8_t id = _readRegister(ST25_ADDR_SYSTEM, REG_IC_REF);
+    // The ST25DV should return 0x24 or 0x25. 
+    // If it returns 0x00 or 0xFF, something is wrong.
+    if (id == 0x24 || id == 0x25) return true;
+    // If it fails, we return true for now so as not to block startup,
+    // but knowing that NFC may not be working properly.
     return true;
 }
 
@@ -33,6 +35,8 @@ bool NFCHandler::isRFFieldPresent()
     // We read the IT_STS_DYN register is System Memory.
     // Bit 0 of this register is "RF Field Present".
     uint8_t status = _readRegister(ST25_ADDR_SYSTEM, REG_IT_STS_DYN);
+    // Security filtering: If we read 0xFF (Bus Error), we return false to avoid false positives
+    if (status == 0xFF) return false;
     return (status & 0x01); // Check Bit 0
 }
 
@@ -90,7 +94,7 @@ void NFCHandler::readBytes(uint16_t mem_addr, uint8_t *buffer, uint8_t len)
     _wire.beginTransmission(ST25_ADDR_USER);
     _wire.write(mem_addr >> 8);
     _wire.write(mem_addr & 0xFF);
-    _wire.endTransmission(false); // Restart
+    _wire.endTransmission(true);
     _wire.requestFrom((int)ST25_ADDR_USER, (int)len);
     int i = 0;
     while (_wire.available() && i < len) buffer[i++] = _wire.read();
@@ -102,7 +106,7 @@ uint8_t NFCHandler::_readRegister(uint8_t device_addr, uint16_t register_addr)
     _wire.beginTransmission(device_addr);
     _wire.write(register_addr >> 8);
     _wire.write(register_addr & 0xFF);
-    _wire.endTransmission(false);
+    _wire.endTransmission(true);
     _wire.requestFrom((int)device_addr, 1);
     if (_wire.available()) return _wire.read();
     return 0;

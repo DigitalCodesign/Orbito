@@ -377,7 +377,6 @@ class OrbitoRobot {
 
             // --- Management ---
             void format();      // Wipes the entire memory
-            String listDir();   // Prints file list to Serial
             int getTotalSpace();
             int getUsedSpace();
 

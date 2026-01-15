@@ -1,26 +1,37 @@
 #include <Orbito.h>
 
-// Pines del puerto de expansión (No son pines del ESP32, son del ATtiny)
-#define PIN_LED_EXT   3 
-#define PIN_POTENCIO  4 
+#define PIN_POTENCIO  PORT_RIGHT_IO_1_1 
 
 void setup() {
-    Orbito.begin();
 
-    // Configurar pines del expansor
-    Orbito.System.pinMode(PIN_LED_EXT, OUTPUT);
+  Orbito.begin();
+
+  Orbito.Display.consoleLog("Potenciometro en PB4");
+  Orbito.Display.consoleLog("(PORT_RIGHT_IO_1_1)");
+
+  delay(2000); 
+  Orbito.Display.fillScreen(0x0000); // Limpiar pantalla
+
 }
 
 void loop() {
-    Orbito.update();
 
-    // Leer valor analógico (0-255 o similar según config ATtiny)
-    int val = Orbito.System.analogRead(PIN_POTENCIO);
-    Orbito.Display.consoleLog("Sensor: " + String(val));
+  Orbito.update();
 
-    // Parpadear LED externo basado en la lectura
-    Orbito.System.digitalWrite(PIN_LED_EXT, true);
-    delay(100);
-    Orbito.System.digitalWrite(PIN_LED_EXT, false);
-    delay(val); // El retardo depende del sensor
+  // 1. Leer sensor usando el pin definido
+  int lectura = Orbito.System.analogRead(PIN_POTENCIO);
+
+  // 2. Mapear el rango correcto (0-1023) a tiempo de espera (10ms a 200ms)
+  int velocidad = map(lectura, 0, 1023, 10, 200);
+
+  // 3. LED VIRTUAL EN PANTALLA
+
+  // ENCENDIDO (Círculo Rojo)
+  Orbito.Display.fillCircle(120, 160, 60, 0xF800); 
+  delay(velocidad); 
+
+  // APAGADO (Círculo Negro / Borrado)
+  Orbito.Display.fillCircle(120, 160, 60, 0x0000); 
+  delay(velocidad);
+
 }

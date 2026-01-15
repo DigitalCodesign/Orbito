@@ -9,8 +9,6 @@
 
 #include "Orbito.h"
 #include <esp_sleep.h>
-#include <FS.h>
-#include <LittleFS.h>
 #include <vector>
 
 // Aux Structure for BLE updates
@@ -22,6 +20,7 @@ struct BLESensorBinding {
 
 // Static list to store links (BLE)
 static std::vector<BLESensorBinding> _ble_sensors;
+static bool _ble_startup_pending = false;
 
 // Static variables for animations
 static unsigned long _last_blink_time = 0;
@@ -61,23 +60,23 @@ OrbitoRobot::OrbitoRobot() :
  */
 bool OrbitoRobot::begin()
 {
-    // Camera initialization
-    _cameraDriver.init();
     // Comms busses initialization
     _spi_bus.begin(PIN_SPI_SCK, PIN_SPI_MISO, PIN_SPI_MOSI, -1);
     //_i2c_bus.begin(PIN_I2C_SDA, PIN_I2C_SCL);
-    // UART inits in PortHandler::begin()
-    // Starts base system (Power & ATtiny)
-    if (!System.begin()) return false;
     // Start the Flash external memory
     _flashDriver.begin();
     // Starts the TFT Display
     _displayDriver.begin();
+    // UART inits in PortHandler::begin()
+    // Starts base system (Power & ATtiny)
+    bool system_ok = System.begin();
+    // Camera initialization
+    _cameraDriver.init();
     // Starts the NFC
     _nfcDriver.begin();
     // Set flag and finish
     _initialized = true;
-    return true;
+    return system_ok;
 }
 
 /**
@@ -87,6 +86,11 @@ bool OrbitoRobot::begin()
 void OrbitoRobot::update()
 {
     if (!_initialized) return;
+    // Start the dashboard now that the user had time to configure it
+    if (_ble_startup_pending){
+        Orbito._bleDriver.begin();
+        _ble_startup_pending = false;
+    }
     // Maintain WiFi & OTA services
     Connect.checkUpdates();
     // Maintain BLE links
@@ -937,90 +941,79 @@ bool OrbitoRobot::BrainModule::isLoaded()
 
 bool OrbitoRobot::StorageModule::writeFile(String path, String content)
 {
-    File file = LittleFS.open(_cleanPath(path), FILE_WRITE);
-    if (!file) return false;
-    file.print(content);
-    file.close();
+    Orbito._flashDriver.eraseSector(0);
+    Orbito._flashDriver.waitForReady(); 
+    uint32_t len = content.length();
+    if (len > 4092) len = 4092; 
+    Orbito._flashDriver.write(0, (const uint8_t*)&len, 4);
+    if (len > 0) Orbito._flashDriver.write(4, (const uint8_t*)content.c_str(), len);
+    Orbito._flashDriver.waitForReady();
     return true;
 }
 
 bool OrbitoRobot::StorageModule::appendFile(String path, String content)
 {
-    File file = LittleFS.open(_cleanPath(path), FILE_APPEND);
-    if (!file) return false;
-    file.print(content);
-    file.close();
-    return true;
+    String last_content = readFile(path);
+    String new_content = last_content + content;
+    return writeFile(path, new_content);
 }
 
 String OrbitoRobot::StorageModule::readFile(String path)
 {
-    File file = LittleFS.open(_cleanPath(path), FILE_READ);
-    if (!file) return "";
-    String buffer = file.readString();
-    file.close();
-    return buffer;
+    uint32_t len = 0;
+    Orbito._flashDriver.read(0, (uint8_t*)&len, 4);
+    if (len == 0xFFFFFFFF || len == 0) return "";
+    if (len > 4092) return "ERROR: Data corrupted";
+    char* buffer = (char*)malloc(len + 1); 
+    if (!buffer) return "";
+    Orbito._flashDriver.read(4, (uint8_t*)buffer, len);
+    buffer[len] = '\0';
+    String resultado = String(buffer);
+    free(buffer);
+    return resultado;
 }
 
 bool OrbitoRobot::StorageModule::exists(String path)
 {
-    return LittleFS.exists(_cleanPath(path));
+    uint32_t len = 0;
+    Orbito._flashDriver.read(0, (uint8_t*)&len, 4);
+    return (len > 0 && len <= 4092);
 }
 
 bool OrbitoRobot::StorageModule::remove(String path)
 {
-    return LittleFS.remove(_cleanPath(path));
+    Orbito._flashDriver.eraseSector(0);
+    Orbito._flashDriver.waitForReady();
+    return true;
 }
 
 // --- Management ---
 
 void OrbitoRobot::StorageModule::format()
 {
-    LittleFS.format();
-}
-
-String OrbitoRobot::StorageModule::listDir()
-{
-    String output = "";
-    // Open the root directory
-    File root = LittleFS.open("/");
-    // Check if it exists and is a valid directory
-    if (!root || !root.isDirectory()) return output;
-    // Open the first file
-    File file = root.openNextFile();
-    // Check if some file exists
-    if (!file) return output;
-    // Prepare output String and continue with the next file if it exists
-    while (file)
-    {
-        // We need to add a line ending jump if it's not the first element
-        if (output.length() > 0) output += "\n";
-        // Format: "/file.extension (XXXXX bytes)"
-        String file_name = String(file.name());
-        if (!file_name.startsWith("/")) file_name = "/" + file_name;
-        // Prepare the output directories list
-        if (file.isDirectory()) output += "[DIR] " + file_name;
-        else output += file_name + "(" + String(file.size()) + "bytes)";
-        // Pass to the next file
-        file = root.openNextFile();
-    }
-    return output;
+    Orbito._flashDriver.eraseChip();
+    Orbito._flashDriver.waitForReady();
 }
 
 int OrbitoRobot::StorageModule::getTotalSpace()
 {
-    return LittleFS.totalBytes();
+    uint32_t id = Orbito._flashDriver.getJEDECID();
+    uint8_t cap_code = id & 0xFF;    
+    if (cap_code > 0) return (1 << cap_code); 
+    return 0;
 }
 
 int OrbitoRobot::StorageModule::getUsedSpace()
 {
-    return LittleFS.usedBytes();
+    uint32_t len = 0;
+    Orbito._flashDriver.read(0, (uint8_t*)&len, 4);
+    if (len == 0xFFFFFFFF) return 0;
+    return (int)len;
 }
 
-String _cleanPath(String path)
+String OrbitoRobot::StorageModule::_cleanPath(String path)
 {
-    if (path.startsWith ("/")) return path;
-    return "/" + path;
+    return path;
 }
 
 // =============================================================
@@ -1110,7 +1103,7 @@ void OrbitoRobot::ConnModule::onWebCommand(std::function<void(String id, int val
 void OrbitoRobot::RemoteModule::initDashboard(String robot_name)
 {
     Orbito._bleDriver.init(robot_name);
-    Orbito._bleDriver.begin();
+    _ble_startup_pending = true;
 }
 
 /**
