@@ -15,6 +15,7 @@ bool CameraHandler::init(Camera_Mode mode)
     _current_mode = mode;
     // Create the camera config struct
     camera_config_t config;
+    memset(&config, 0, sizeof(config));
     // Fill the camera config struct, first pinout configuration
     config.ledc_channel = LEDC_CHANNEL_0;
     config.ledc_timer = LEDC_TIMER_0;
@@ -37,12 +38,43 @@ bool CameraHandler::init(Camera_Mode mode)
     // Basic camera hardware configuration
     config.xclk_freq_hz = 20000000;
     // Specific camera hardware configuration by mode
-    _configureCameraByMode(config, mode);
+    switch (mode) {
+        case MODE_AI:
+            config.pixel_format = PIXFORMAT_RGB565;
+            config.frame_size = FRAMESIZE_QVGA;
+            break;
+        case MODE_GRAYSCALE:
+            config.pixel_format = PIXFORMAT_GRAYSCALE;
+            config.frame_size = FRAMESIZE_QVGA;
+            break;
+        case MODE_HIGH_RES:
+            config.pixel_format = PIXFORMAT_JPEG;
+            config.frame_size = FRAMESIZE_UXGA;
+            config.jpeg_quality = 10;
+            break;
+        case MODE_STREAMING:
+        default:
+            config.pixel_format = PIXFORMAT_JPEG;
+            config.frame_size = FRAMESIZE_QVGA;
+            config.jpeg_quality = 12;
+            break;
+    }
+    if (psramFound())
+    {
+        config.fb_location = CAMERA_FB_IN_PSRAM;
+        config.fb_count = 2;
+        config.grab_mode = CAMERA_GRAB_LATEST;
+    } else {
+        config.fb_location = CAMERA_FB_IN_DRAM;
+        config.fb_count = 1;
+        config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
+    }
     // Camera initialization
-    esp_err_t result = esp_camera_init(&config);
-    if (result != ESP_OK) return false;
+    if (esp_camera_init(&config) != ESP_OK) return false;
     // Sensor initialization
     _sensor = esp_camera_sensor_get();
+    if (!_sensor) return false;
+    // Sensor initialization
     _applySensorSettings();
     // Set initialization flag
     _is_initialized = true;
@@ -60,7 +92,6 @@ camera_fb_t *CameraHandler::getFrame()
 {
     if (!_is_initialized || _sensor == NULL) return nullptr;
     camera_fb_t *fb = esp_camera_fb_get();
-    if (fb == nullptr) return nullptr;
     return fb;
 }
 
@@ -71,59 +102,68 @@ void CameraHandler::releaseFrame(camera_fb_t *fb)
     esp_camera_fb_return(fb);
 }
 
+// Change the image mode
+void CameraHandler::setMode(CameraHandler::Camera_Mode mode)
+{
+    if (_is_initialized) return;
+    if (_current_mode == mode) return;
+    _current_mode = mode;
+    _configureCameraByMode();
+}
+
 // Configure the image resolution
 void CameraHandler::setResolution(framesize_t size)
 {
-    if (_sensor->pixformat == PIXFORMAT_JPEG)
-        _sensor->set_framesize(_sensor, size);
+    if (!_sensor) return;
+    _sensor->set_framesize(_sensor, size);
 }
 
 // Configure the image quality
 void CameraHandler::setQuality(int quality)
 {
-    if(_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_quality(_sensor, quality);
 }
 
 // Configure the Vertical Image Flip
 void CameraHandler::setVFlip(bool enable)
 {
-    if(_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_vflip(_sensor, enable);
 }
 
 // Configure the Horizontal Image Mirror
 void CameraHandler::setHMirror(bool enable)
 {
-    if(_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_hmirror(_sensor, enable);
 }
 
 // Configure the image Brightness
 void CameraHandler::setBrightness(int level)
 {
-    if(_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_brightness(_sensor, level);
 }
 
 // Configure the image saturation
 void CameraHandler::setSaturation(int level)
 {
-    if(_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_saturation(_sensor, level);
 }
 
 // Configure the image contrast
 void CameraHandler::setContrast(int level)
 {
-    if(_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_contrast(_sensor, level);
 }
 
 // Configure the image White Balance
 void CameraHandler::setWhiteBalance(bool enable, int mode)
 {
-    if (_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_whitebal(_sensor, enable ? 1 : 0);
     _sensor->set_awb_gain(_sensor, enable ? 1 : 0);
     if (enable) _sensor->set_wb_mode(_sensor, mode);
@@ -132,7 +172,7 @@ void CameraHandler::setWhiteBalance(bool enable, int mode)
 // Configure the image exposure control
 void CameraHandler::setExposureControl(bool enable, int dsp_level)
 {
-    if (_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_exposure_ctrl(_sensor, enable ? 1 : 0);
     _sensor->set_aec2(_sensor, enable ? 1 : 0);
     if (enable && dsp_level >= -2 && dsp_level <= 2)
@@ -142,14 +182,14 @@ void CameraHandler::setExposureControl(bool enable, int dsp_level)
 // Configure the gain ceiling
 void CameraHandler::setGainCeiling(gainceiling_t gain)
 {
-    if(_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_gainceiling(_sensor, gain);
 }
 
 // Get last frame width
 int CameraHandler::getWidth()
 {
-    if (_sensor == NULL) return 0;
+    if (!_sensor) return 0;
     switch (_sensor->status.framesize)
     {
         case FRAMESIZE_QQVGA: return 160;
@@ -187,7 +227,7 @@ int CameraHandler::getHeight()
 // Get last frame pixel format
 pixformat_t CameraHandler::getPixelFormat()
 {
-    if (_sensor == NULL) return PIXFORMAT_JPEG;
+    if (!_sensor) return PIXFORMAT_JPEG;
     return _sensor->pixformat;
 }
 
@@ -200,14 +240,14 @@ CameraHandler::Camera_Mode CameraHandler::getCurrentMode()
 // Special effect aplication tool
 void CameraHandler::setSpecialEffect(Special_Effect effect)
 {
-    if (_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_special_effect(_sensor, (int)effect);
 }
 
 // Test mode tool
 void CameraHandler::setColorBar(bool enable)
 {
-    if (_sensor == NULL) return;
+    if (!_sensor) return;
     _sensor->set_colorbar(_sensor, enable ? 1 : 0);
 }
 
@@ -225,7 +265,7 @@ void CameraHandler::_applySensorSettings()
     if (_sensor->id.PID == OV3660_PID)
     {
         _sensor->set_vflip(_sensor, 1); // Usually the sensor camera are flipped vertically
-        _sensor->set_saturation(_sensor, -2); // Lower saturation, more real colors
+        _sensor->set_saturation(_sensor, 0); // Lower saturation, more real colors
         _sensor->set_brightness(_sensor, 1); // A bit high brightness for indoor
         _sensor->set_whitebal(_sensor, 1); // White balance adejustment
         _sensor->set_awb_gain(_sensor, 1); // Apply the AWB gain to see White Balance changes
@@ -234,54 +274,31 @@ void CameraHandler::_applySensorSettings()
 }
 
 // Apply specific configuration by mode selected
-void CameraHandler::_configureCameraByMode(camera_config_t &config, Camera_Mode mode)
+void CameraHandler::_configureCameraByMode()
 {
-    switch (mode)
+    if (!_sensor) return;
+    delay(50);
+    switch (_current_mode)
     {
         case MODE_AI: // Configuration to look for stability (better for TinyML)
-            config.pixel_format = PIXFORMAT_RGB565;
-            config.frame_size = FRAMESIZE_QVGA;
-            config.fb_count = 1;
-            config.fb_location = CAMERA_FB_IN_DRAM;
-            config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
-            config.xclk_freq_hz = 10000000;
+            _sensor->set_pixformat(_sensor, PIXFORMAT_RGB565);
+            _sensor->set_framesize(_sensor, FRAMESIZE_QVGA);
             break;
         case MODE_GRAYSCALE: // Configuration for quick movement detection or QR scans
-            config.pixel_format = PIXFORMAT_GRAYSCALE;
-            config.frame_size = FRAMESIZE_QVGA;
-            config.fb_count = 1;
-            config.fb_location = CAMERA_FB_IN_DRAM;
-            config.grab_mode = CAMERA_GRAB_WHEN_EMPTY;
-            config.xclk_freq_hz = 20000000;
+            _sensor->set_pixformat(_sensor, PIXFORMAT_GRAYSCALE);
+            _sensor->set_framesize(_sensor, FRAMESIZE_QVGA);
             break;
         case MODE_HIGH_RES: // Configuration to store images** (Need test)
-            config.pixel_format = PIXFORMAT_JPEG;
-            config.frame_size = FRAMESIZE_UXGA;
-            config.jpeg_quality = 10;
-            config.fb_count = 1;
-            if (psramFound()) config.fb_location = CAMERA_FB_IN_PSRAM;
-            else {
-                config.frame_size = FRAMESIZE_SVGA;
-                config.fb_location = CAMERA_FB_IN_DRAM;
-            }
-            config.grab_mode = CAMERA_GRAB_LATEST;
-            config.xclk_freq_hz = 20000000;
+            _sensor->set_pixformat(_sensor, PIXFORMAT_JPEG);
+            _sensor->set_framesize(_sensor, FRAMESIZE_UXGA);
+            _sensor->set_quality(_sensor, 10);
             break;
         case MODE_STREAMING: // Default configuration, for viedo streaming via web server
         default:
-            config.pixel_format = PIXFORMAT_JPEG;
-            config.frame_size = FRAMESIZE_CIF;
-            config.jpeg_quality = 15;
-            if (psramFound())
-            {
-                config.fb_count = 2;
-                config.fb_location = CAMERA_FB_IN_PSRAM;
-            } else {
-                config.fb_count = 1;
-                config.fb_location = CAMERA_FB_IN_DRAM;
-            }
-            config.grab_mode = CAMERA_GRAB_LATEST;
-            config.xclk_freq_hz = 20000000;
+            _sensor->set_pixformat(_sensor, PIXFORMAT_JPEG);
+            _sensor->set_framesize(_sensor, FRAMESIZE_QVGA);
+            _sensor->set_quality(_sensor, 12);
             break;
     }
+    delay(100);
 }

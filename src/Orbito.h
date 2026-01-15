@@ -186,6 +186,7 @@ class OrbitoRobot {
 
             // --- Hardware Adjustment ---
 
+            void setMode(CameraHandler::Camera_Mode mode);
             void setResolution(framesize_t size);   // QVGA, VGA, SVGA, UXGA...
             void setQuality(int quality);           // JPEG Quality (0-63)
             void setEffect(int effect);             // Hardware FX (Sepia, Negative...)

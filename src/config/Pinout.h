@@ -9,7 +9,7 @@
 #define PIN_SPI_SCK     12
 
 #define PIN_TINY_TX     43
-#define PIN_TINY_RX      44
+#define PIN_TINY_RX     44
 #define TINY_UART_PORT  0
 
 #define PIN_TFT_CS      46

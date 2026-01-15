@@ -61,9 +61,11 @@ OrbitoRobot::OrbitoRobot() :
  */
 bool OrbitoRobot::begin()
 {
+    // Camera initialization
+    _cameraDriver.init();
     // Comms busses initialization
     _spi_bus.begin(PIN_SPI_SCK, PIN_SPI_MISO, PIN_SPI_MOSI, -1);
-    _i2c_bus.begin(PIN_I2C_SDA, PIN_I2C_SCL);
+    //_i2c_bus.begin(PIN_I2C_SDA, PIN_I2C_SCL);
     // UART inits in PortHandler::begin()
     // Starts base system (Power & ATtiny)
     if (!System.begin()) return false;
@@ -166,18 +168,20 @@ void OrbitoRobot::SystemModule::hibernate(int wakeup_pin, int active_level)
     Orbito.Vision.stopWebStream();
     // WiFi/BT turn down automatically in Deep Sleep
     // Config the wake up with the button
-    esp_sleep_enable_ext0_wakeup((gpio_num_t)PIN_BUTTON, 0);
+    gpio_wakeup_enable((gpio_num_t)PIN_BUTTON, GPIO_INTR_LOW_LEVEL);
     // Config the wake up with the ATtiny (Wake-on-UART)
     if (wakeup_pin != -1)
     {
         // Send the command to the ATtiny
         Orbito._ioDriver.triggerRemoteSleep(wakeup_pin, active_level);
         // Config the Rx pin from ESP32 to wake up if it goes LOW (UART Start-Bit)
-        uint64_t mask = (1ULL << PIN_TINY_RX);
-        esp_sleep_enable_ext1_wakeup(mask, ESP_EXT1_WAKEUP_ANY_LOW);
+        gpio_wakeup_enable((gpio_num_t)PIN_TINY_RX, GPIO_INTR_LOW_LEVEL);
     }
-    // Go to sleep
-    esp_deep_sleep_start();
+    // Enable sleep function and go to sleep
+    esp_sleep_enable_gpio_wakeup();
+    esp_light_sleep_start(); // Code pauses here <-------
+    // Wakeup again
+    Orbito.Display.turnOn();
 }
 
 /**
@@ -301,7 +305,6 @@ void OrbitoRobot::SystemModule::tone(uint16_t frequency, uint32_t duration)
 
 /**
  * @brief Starts the MJPEG Video Server.
- * @param port HTTP Port (Default: 81 to avoid conflict with UI).
  */
 void OrbitoRobot::VisionModule::startWebStream()
 {
@@ -350,6 +353,10 @@ void OrbitoRobot::VisionModule::release(camera_fb_t* fb)
 }
 
 // --- Hardware Adjustment ---
+void OrbitoRobot::VisionModule::setMode(CameraHandler::Camera_Mode mode)
+{
+    Orbito._cameraDriver.setMode(mode);
+}
 
 void OrbitoRobot::VisionModule::setResolution(framesize_t size)
 {
@@ -497,7 +504,7 @@ void OrbitoRobot::DisplayModule::drawSnapshot(camera_fb_t* fb)
     if (!fb) return;
     // We only can only print an image directly if it's in RGB565 or Grayscale
     // For JPEG we need a complex decoder, not implemented
-    if (fb->format == PIXFORMAT_JPEG) return;
+    if (fb->format != PIXFORMAT_RGB565) return;
     // Print the Camera Frame given
     Orbito._displayDriver.draw([=](Adafruit_ST7789 &tft) {
         // If it's Grayscale (1 byte per pixel), we need to convert or use gray bitmap
@@ -525,6 +532,12 @@ void OrbitoRobot::DisplayModule::drawSnapshot(camera_fb_t* fb)
             // Free buffer holded from memory
             free(line_buffer);
         } else {
+            // Invert every 2 bytes of all images
+            for (uint32_t i = 0; i < fb->len; i += 2) {
+                uint8_t temp = fb->buf[i];
+                fb->buf[i] = fb->buf[i+1];
+                fb->buf[i+1] = temp;
+            }
             // Asume RGB565 (2 bytes per pixel)
             tft.drawRGBBitmap(0, 0, (uint16_t*)fb->buf, fb->width, fb->height);
         }
@@ -556,7 +569,11 @@ void OrbitoRobot::DisplayModule::drawEmoji(String emojiName, int x, int y)
  */
 void OrbitoRobot::DisplayModule::consoleLog(String text)
 {
-
+    Orbito._displayDriver.draw([=](Adafruit_ST7789 &tft) {
+        tft.setTextColor(0xFFFF);
+        tft.setTextSize(2);
+        tft.println(text);
+    });
 }
 
 /**
@@ -650,30 +667,32 @@ static void _fillEllipse(int16_t x0, int16_t y0, int16_t rx, int16_t ry, uint16_
 }
 
 static void _renderEye(OrbitoRobot::ActionModule::EyeParams p) {
-    uint16_t COLOR_BG = 0xFFFF;
-    uint16_t COLOR_FG = 0x0000;
+    uint16_t COLOR_BG = 0x0000;
+    uint16_t COLOR_FG = 0xFFFF;
     int16_t current_h = p.height * p.open_factor;
     if (current_h < 2) current_h = 2;
-    Orbito.Display.fillRect( p.x - (p.width / 2) - 2, p.y - (p.height / 2) - 2, p.width + 4, p.height + 4, COLOR_BG);
-    _fillEllipse(p.x, p.y, p.width / 2, current_h / 2, COLOR_FG);
+    int16_t draw_x = p.x + p.pupil_x;
+    int16_t draw_y = p.y + p.pupil_y;
+    Orbito.Display.fillRect( p.x - (p.width / 2) - 20, p.y - (p.height / 2) - 20, p.width + 40, p.height + 40, COLOR_BG);
+    _fillEllipse(draw_x, draw_y, p.width / 2, current_h / 2, COLOR_FG);
     int16_t brow_radius = (p.width / 2) + (p.width / 4);
-    int16_t brow_y = p.y - brow_radius * 2 + 10;
+    int16_t brow_y = draw_y - brow_radius * 2 + 10;
     if (p.has_eyebrown)
     {
         if (p.is_left_eye)
         {
             switch (p.eyebr_type)
             {
-                case 1: Orbito.Display.fillCircle(p.x - (p.width / 2), brow_y + 20, brow_radius, COLOR_BG); break;
-                case 2: Orbito.Display.fillTriangle(p.x + (p.width / 2), p.y, p.x - p.width, p.y - (p.height / 2), p.x + (p.width / 2), p.y - (p.height / 2), COLOR_BG); break;
-                case 3: Orbito.Display.fillCircle(p.x, p.y - (current_h / 5), p.width - (p.width / 3), COLOR_BG); break;
+                case 1: Orbito.Display.fillCircle(draw_x - (p.width / 2), brow_y + 20, brow_radius, COLOR_BG); break;
+                case 2: Orbito.Display.fillTriangle(draw_x + (p.width / 2), draw_y, draw_x - p.width, draw_y - (p.height / 2), draw_x + (p.width / 2), draw_y - (p.height / 2), COLOR_BG); break;
+                case 3: Orbito.Display.fillCircle(draw_x, draw_y - (current_h / 5), p.width - (p.width / 3), COLOR_BG); break;
             }
         } else {
             switch (p.eyebr_type)
             {
-                case 1: Orbito.Display.fillCircle(p.x + (p.width / 2), brow_y + 20, brow_radius, COLOR_BG); break;
-                case 2: Orbito.Display.fillTriangle(p.x - (p.width / 2), p.y, p.x + p.width, p.y - (p.height / 2), p.x - (p.width / 2), p.y - (p.height / 2), COLOR_BG); break;
-                case 3: Orbito.Display.fillCircle(p.x, p.y - (current_h / 5), p.width - (p.width / 3), COLOR_BG); break;
+                case 1: Orbito.Display.fillCircle(draw_x + (p.width / 2), brow_y + 20, brow_radius, COLOR_BG); break;
+                case 2: Orbito.Display.fillTriangle(draw_x - (p.width / 2), draw_y, draw_x + p.width, draw_y - (p.height / 2), draw_x - (p.width / 2), draw_y - (p.height / 2), COLOR_BG); break;
+                case 3: Orbito.Display.fillCircle(draw_x, draw_y - (current_h / 5), p.width - (p.width / 3), COLOR_BG); break;
             }
         }
     }
@@ -746,8 +765,8 @@ static void _redrawEyes(float override_open = -1.0)
 
 static void _renderMouth(OrbitoRobot::ActionModule::MouthParams p)
 {
-    uint16_t COLOR_BG = 0xFFFF;
-    uint16_t COLOR_FG = 0x0000;
+    uint16_t COLOR_BG = 0x0000;
+    uint16_t COLOR_FG = 0xFFFF;
     int16_t x0 = p.x - (p.width / 2);
     int16_t y0 = p.y - (p.height / 2);
     switch (p.shape)
@@ -788,7 +807,7 @@ void OrbitoRobot::ActionModule::setExpression(Emotion e)
     _current_pupil_x = 0;
     _current_pupil_y = 0;
     // Clean the display
-    Orbito.Display.fillScreen(0xFFFF);
+    Orbito.Display.fillScreen(0x0000);
     // Draw the mouth
     int16_t MOUTH_Y  = 190;
     int16_t CENTER_X = 160;
@@ -1152,7 +1171,7 @@ String OrbitoRobot::RemoteModule::readTagText()
 {
     // Read the User Memory looking for a TEXT register (Type 'T')
     uint8_t buffer[64]; // Read the first 64 bytes
-    Orbito._nfcDriver.readBytes(0x0000, buffer, 64);
+    Orbito._nfcDriver.readBytes(0xFFFF, buffer, 64);
     // Basic parse NDEF
     // Byte 0: 0xD1 (Inicio)
     // Byte 3: 'T' (Text type) or 'U' (URI type)
@@ -1202,10 +1221,10 @@ void OrbitoRobot::RemoteModule::writeText(String txt)
         'e', 'n'     // Language: English
     };
     // Write Header
-    Orbito._nfcDriver.writeBytes(0x0000, header, sizeof(header));
+    Orbito._nfcDriver.writeBytes(0xFFFF, header, sizeof(header));
     // Write Text
-    Orbito._nfcDriver.writeBytes(0x0000 + sizeof(header), (uint8_t*)txt.c_str(), text_len);
+    Orbito._nfcDriver.writeBytes(0xFFFF + sizeof(header), (uint8_t*)txt.c_str(), text_len);
     // TLV Ending
     uint8_t term = 0xFE;
-    Orbito._nfcDriver.writeBytes(0x0000 + sizeof(header) + text_len, &term, 1);
+    Orbito._nfcDriver.writeBytes(0xFFFF + sizeof(header) + text_len, &term, 1);
 }

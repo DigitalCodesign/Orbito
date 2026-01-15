@@ -2,17 +2,26 @@
 
 void setup() {
     Orbito.begin();
-    Orbito.Display.consoleLog("Me voy a dormir...");
-    Orbito.Display.consoleLog("Pulsame para despertar");
-    delay(2000);
-
-    // Hibernar indefinidamente.
-    // Param 1 (-1): Usar botón por defecto.
-    // Param 2 (0): Despertar cuando la señal sea LOW (0).
-    Orbito.System.hibernate(-1, 0); 
+    Orbito.Display.consoleLog("INICIADO");
+    delay(1000);
 }
 
 void loop() {
-    // Este código nunca se ejecuta porque el robot se duerme en el setup
-    // y al despertar reinicia desde el principio.
+    // 1. Fase Activa
+    Orbito.Display.fillScreen(0x0000); // Limpiar
+    Orbito.Display.setCursor(0,0);
+    Orbito.Display.consoleLog("TRABAJANDO...");
+    delay(2000);
+
+    // 2. Fase Dormida
+    Orbito.Display.consoleLog("Durmiendo...");
+    delay(500); 
+
+    // Se duerme hasta que pulses el botón (PIN 48)
+    // El -1 indica que no usamos disparador externo extra, solo el botón base
+    Orbito.System.hibernate(-1, 0); 
+
+    // 3. Al despertar continúa inmediatamente aquí
+    Orbito.Display.consoleLog("¡DESPIERTO!");
+    delay(1000);
 }

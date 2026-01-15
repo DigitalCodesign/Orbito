@@ -22,6 +22,7 @@ void DisplayHandler::begin()
     _tft->init(TFT_WIDTH, TFT_HEIGHT);
     _tft->setRotation(TFT_ROTATION);
     _tft->fillScreen(ST77XX_BLACK);
+    _tft->invertDisplay(false);
     xSemaphoreGive(_safety_block_spi);
 }
 

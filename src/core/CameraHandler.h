@@ -13,7 +13,7 @@ class CameraHandler {
             MODE_STREAMING,
             MODE_AI,
             MODE_GRAYSCALE,
-            MODE_HIGH_RES
+            MODE_HIGH_RES,
         };
 
         enum Special_Effect {
@@ -30,7 +30,7 @@ class CameraHandler {
         CameraHandler();
 
         // Initialize the Camera
-        bool init(Camera_Mode mode = MODE_STREAMING);
+        bool init(Camera_Mode mode = MODE_AI);
         // Get the current initialization status
         bool isInitialized();
 
@@ -38,6 +38,8 @@ class CameraHandler {
         camera_fb_t* getFrame();
         // Free the RAM from the last frame
         void releaseFrame(camera_fb_t* fb);
+        // Change the image mode
+        void setMode(Camera_Mode mode);
 
         // Configure the image resolution
         void setResolution(framesize_t size);
@@ -85,7 +87,7 @@ class CameraHandler {
         // Apply OV3660 configuration corrections
         void _applySensorSettings();
         // Apply specific configuration by mode selected
-        void _configureCameraByMode(camera_config_t &config, Camera_Mode mode);
+        void _configureCameraByMode();
 
 };
 
