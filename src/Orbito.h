@@ -154,8 +154,7 @@ class OrbitoRobot {
             // --- Streaming ---
 
             /**
-             * @brief Starts the MJPEG Video Server.
-             * @param port HTTP Port (Default: 81 to avoid conflict with UI).
+             * @brief Starts the Server with MJPEG Video Stream.
              */
             void startWebStream();
 
@@ -422,6 +421,11 @@ class OrbitoRobot {
              * e.g., /cmd?id=dance&value=1
              */
             void onWebCommand(std::function<void(String id, int value)> callback);
+
+            /**
+             * @brief Starts the Server with API and web Interface.
+             */
+            void startWebServer();
 
         } Connect;
 
