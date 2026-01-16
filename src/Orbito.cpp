@@ -1267,7 +1267,7 @@ int OrbitoRobot::EarModule::getVolume()
  * IMPORTANT --> Blocks execution during recording!
  * @param seconds Recording duration (Be careful with RAM, max 3-4s).
  */
-void OrbitoRobot::EarModule::recordAndPrint(int seconds)
+int16_t* OrbitoRobot::EarModule::capture(int milliseconds)
 {
     // Calculate size. Samples = (Rate * ms) / 1000
     size_t total_samples = (16000 * milliseconds) / 1000; // 16.000 is audio sample rate by default for voices and Edge Impulse
