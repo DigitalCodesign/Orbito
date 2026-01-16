@@ -1092,7 +1092,6 @@ void OrbitoRobot::ConnModule::onWebCommand(std::function<void(String id, int val
     Orbito._webDriver.setCommandCallback(callback);
 }
 
-
 /**
  * @brief Starts the Server with API and web Interface.
  */
