@@ -21,6 +21,10 @@
 #define PIN_BUTTON      48
 #define PIN_BUZZER      42
 
+#define PIN_MIC_CLK 38
+#define PIN_MIC_DATA 39
+#define PIN_MIC_LR 41
+
 #define PORT_LEFT_IO_1_1  0 // PA4
 #define PORT_LEFT_IO_1_2  1 // PA5
 #define PORT_RIGHT_IO_1_1 7 // PB4

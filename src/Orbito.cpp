@@ -48,7 +48,7 @@ OrbitoRobot::OrbitoRobot() :
     _nfcDriver(_i2c_bus),
     // Sub-module initialization
     System(), Vision(), Display(), Action(),
-    Brain(), Storage(), Connect(), Remote()
+    Brain(), Storage(), Connect(), Remote(), Ear()
 {
     _initialized = false;
     _aiAdapter = nullptr;
@@ -1229,4 +1229,87 @@ void OrbitoRobot::RemoteModule::writeText(String txt)
     // TLV Ending
     uint8_t term = 0xFE;
     Orbito._nfcDriver.writeBytes(0xFFFF + sizeof(header) + text_len, &term, 1);
+}
+
+// =============================================================
+// 9. EAR MODULE (The Hearing)
+// =============================================================
+
+/**
+ * @brief Starts the microphone.
+ */
+bool OrbitoRobot::EarModule::begin()
+{
+    return Orbito._micDriver.begin();
+}
+
+/**
+ * @brief Obtains the ambient volume level (approx. 0-100).
+ * Useful for detecting clapping or shouting.
+ */
+int OrbitoRobot::EarModule::getVolume()
+{
+    // Read a very small window (approx 10ms)
+    // 16000 Hz * 0.01s = 160 samples
+    int16_t buffer[160];
+    size_t read = Orbito._micDriver.read(buffer, 160);
+    if (read == 0) return 0;
+    long sum = 0;
+    for (int i = 0; i < read; i++) sum += abs(buffer[i]);
+    // Empirical sensitivity adjustment
+    int avg = sum / read;
+    int volume = map(avg, 0, 1500, 0, 100); 
+    return constrain(volume, 0, 100);
+}
+
+/**
+ * @brief Records audio in RAM and dumps it through the serial port.
+ * IMPORTANT --> Blocks execution during recording!
+ * @param seconds Recording duration (Be careful with RAM, max 3-4s).
+ */
+void OrbitoRobot::EarModule::recordAndPrint(int seconds)
+{
+    // Calculate size. Samples = (Rate * ms) / 1000
+    size_t total_samples = (16000 * milliseconds) / 1000; // 16.000 is audio sample rate by default for voices and Edge Impulse
+    size_t buffer_size_bytes = total_samples * sizeof(int16_t);
+    // Allocate Memory (Standard Malloc)
+    int16_t* audio_buffer = (int16_t*)malloc(buffer_size_bytes);
+    if (audio_buffer == NULL) return NULL;
+    // Recording. PDM mic delivers stereo data (L/R) interleaved.
+    // MicHandler driver gives us raw I2S data.
+    // To save RAM and simplify, we convert to MONO on the fly by averaging channels.
+    // This is vital for Edge Impulse which usually expects 1 channel.
+    size_t samples_collected = 0;
+    const size_t chunk_size = 512; 
+    int16_t raw_chunk[chunk_size]; // Temp buffer for I2S read
+    while (samples_collected < total_samples)
+    {
+        // Read from driver
+        size_t needed = total_samples - samples_collected;
+        // Driver reads frames (stereo), read a bit more to process
+        size_t to_read = (needed > (chunk_size/2)) ? (chunk_size) : (needed * 2);
+        size_t raw_read = Orbito._micDriver.read(raw_chunk, to_read);
+        if (raw_read == 0) break; // Watchdog safety
+        // Process Stereo -> Mono and save
+        // I2S PDM: [L, R, L, R...]
+        for (int i = 0; i < raw_read; i += 2)
+        {
+            if (samples_collected < total_samples)
+            {
+                // Average (Improves SNR)
+                int16_t mono = (raw_chunk[i] / 2) + (raw_chunk[i+1] / 2);
+                audio_buffer[samples_collected++] = mono;
+            }
+        }
+    }
+    return audio_buffer;
+}
+
+/**
+ * @brief Frees audio clip memory.
+ * MANDATORY to call this after using the data.
+ */
+void OrbitoRobot::EarModule::release(int16_t* buffer)
+{
+    if (buffer != NULL) free(buffer);
 }

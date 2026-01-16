@@ -29,6 +29,7 @@
 #include "./core/BLEHandler.h"
 #include "./core/WiFiHandler.h"
 #include "./core/WebServerHandler.h"
+#include "./core/MicHandler.h"
 
 // AI Interface (Contract for Dependency Injection)
 #include "./core/AIInterface.h"
@@ -494,6 +495,39 @@ class OrbitoRobot {
         } Remote;
 
         // =============================================================
+        // 9. EAR MODULE (The Hearing)
+        // =============================================================
+        struct EarModule
+        {
+
+            /**
+             * @brief Initializes the audio system.
+             */
+            bool begin();
+
+            /**
+             * @brief Gets current volume level (0-100).
+             * Non-blocking. Useful for triggers (claps).
+             */
+            int getVolume();
+
+            /**
+             * @brief Records an audio clip to RAM.
+             * BLOCKING: The robot will stop while recording.
+             * @param milliseconds Duration of the recording.
+             * @return Pointer to the data buffer (int16_t*). Returns NULL if RAM is full.
+             */
+            int16_t* capture(int milliseconds);
+
+            /**
+             * @brief Frees audio clip memory.
+             * MANDATORY to call this after using the data.
+             */
+            void release(int16_t* buffer);
+
+        } Ear;
+
+        // =============================================================
         // MAIN API
         // =============================================================
 
@@ -531,6 +565,7 @@ class OrbitoRobot {
         WebServerHandler _webDriver;
         PortHandler      _ioDriver;
         FlashHandler     _flashDriver;
+        MicHandler       _micDriver;
 
         // --- INTERNAL STATE ---
         bool _initialized;
@@ -545,6 +580,7 @@ class OrbitoRobot {
         friend struct StorageModule;
         friend struct ConnModule;
         friend struct RemoteModule;
+        friend struct EarModule;
 
 };
 
