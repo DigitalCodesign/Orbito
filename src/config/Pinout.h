@@ -32,4 +32,13 @@
 #define PORT_RIGHT_IO_2_1 5 // PB6
 #define PORT_RIGHT_IO_2_2 4 // PB7
 
+#define PORT_BACK_IO_1_1 18 // PA1
+#define PORT_BACK_IO_1_2 19 // PA2
+#define PORT_BACK_IO_2_1 12 // PC0
+#define PORT_BACK_IO_2_2 13 // PC1
+#define PORT_BACK_IO_2_3 14 // PC2
+#define PORT_BACK_IO_2_4 15 // PC3
+#define PORT_BACK_IO_2_5 16 // PC4
+#define PORT_BACK_IO_2_6 17 // PC5
+
 #endif

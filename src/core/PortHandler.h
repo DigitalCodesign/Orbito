@@ -47,6 +47,8 @@
 
 class PortHandler {
 
+    friend class OrbitoRobot;
+    
     public:
 
         /**
@@ -158,6 +160,9 @@ class PortHandler {
 
         // Helper function to calculate the CRC of a payload.
         uint8_t _calcCRC(uint8_t cmd, const uint8_t* data, size_t len);
+
+        friend class OrbitoMochilaCalidadAire;
+
 
 };
 

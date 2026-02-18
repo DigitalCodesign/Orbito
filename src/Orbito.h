@@ -30,9 +30,12 @@
 #include "./core/WiFiHandler.h"
 #include "./core/WebServerHandler.h"
 #include "./core/MicHandler.h"
+#include "./core/ExtModCommands.h"
 
 // AI Interface (Contract for Dependency Injection)
 #include "./core/AIInterface.h"
+
+class OrbitoMochilaCalidadAire;
 
 class OrbitoRobot {
 
@@ -528,6 +531,19 @@ class OrbitoRobot {
         } Ear;
 
         // =============================================================
+        // 10. External Modules
+        // =============================================================
+        struct ExternalModules
+        {
+            struct LaserModule
+            {
+                void begin();
+
+                uint16_t getDistance();
+            }Laser;
+        } ExternalModule;
+
+        // =============================================================
         // MAIN API
         // =============================================================
 
@@ -566,6 +582,7 @@ class OrbitoRobot {
         PortHandler      _ioDriver;
         FlashHandler     _flashDriver;
         MicHandler       _micDriver;
+        ExtModCommands   _modules;
 
         // --- INTERNAL STATE ---
         bool _initialized;
@@ -581,7 +598,10 @@ class OrbitoRobot {
         friend struct ConnModule;
         friend struct RemoteModule;
         friend struct EarModule;
+        friend struct LaserModule;
 
+        
+        friend class OrbitoMochilaCalidadAire;
 };
 
 // Global Instance for Plug & Play usage

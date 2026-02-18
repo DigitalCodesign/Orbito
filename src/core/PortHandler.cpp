@@ -93,9 +93,10 @@ int PortHandler::analogRead(uint8_t pin)
     uint8_t payload[] = { pin };
     _sendPacket(TINY_CMD_AREAD, payload, 1);
     uint8_t buffer[2];
+    delay(1);
     if (_readResponse(buffer, 2))
-    {
-        int value = (buffer[0] << 8) | buffer[1];
+    {   
+        int value = (uint16_t)( ((uint16_t)buffer[0] << 8) | (uint16_t)buffer[1] );
         return value;
     }
     return -1;

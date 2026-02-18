@@ -76,7 +76,7 @@ void BLEHandler::begin()
     _tx_characteristic_pointer = _uart_service_pointer->createCharacteristic(
         BLE_UUID_TX, BLECharacteristic::PROPERTY_NOTIFY
     );
-    _tx_characteristic_pointer->addDescriptor(new BLE2902());
+    //_tx_characteristic_pointer->addDescriptor(new BLE2902());
     // Creates RX Characteristic
     _rx_characteristic_pointer = _uart_service_pointer->createCharacteristic(
         BLE_UUID_RX, BLECharacteristic::PROPERTY_WRITE
@@ -159,7 +159,7 @@ void BLEHandler::addVariable(String name, float initial_value)
     BLECharacteristic* char_pointer = _variable_service_pointer->createCharacteristic(
         uuid.c_str(), BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
     );
-    char_pointer->addDescriptor(new BLE2902());
+    //char_pointer->addDescriptor(new BLE2902());
     String value_string = String(initial_value, 2);
     char_pointer->setValue((uint8_t*)value_string.c_str(), value_string.length());
     _dynamic_variables[name] = char_pointer;
@@ -178,7 +178,7 @@ void BLEHandler::addSwitch(String name, bool initial_state, std::function<void(b
     BLECharacteristic* char_pointer = _variable_service_pointer->createCharacteristic(
         uuid.c_str(), BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_NOTIFY
     );
-    char_pointer->addDescriptor(new BLE2902());
+    //char_pointer->addDescriptor(new BLE2902());
     char_pointer->setCallbacks(new SwitchCallbacks(callback));
     String value_string = initial_state ? "1" : "0";
     char_pointer->setValue((uint8_t*)value_string.c_str(), value_string.length());

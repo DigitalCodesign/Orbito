@@ -345,7 +345,7 @@ camera_fb_t* OrbitoRobot::VisionModule::snapshot()
  */
 bool OrbitoRobot::VisionModule::saveSnapshot(String filename)
 {
-
+    return false;
 }
 
 /**
@@ -1194,6 +1194,7 @@ String OrbitoRobot::RemoteModule::readTagText()
             return String(output);
         } else return "";
     }
+    return "";
 }
 
 /**
@@ -1223,12 +1224,12 @@ void OrbitoRobot::RemoteModule::writeText(String txt)
         'e', 'n'     // Language: English
     };
     // Write Header
-    Orbito._nfcDriver.writeBytes(0xFFFF, header, sizeof(header));
+    Orbito._nfcDriver.writeBytes(0x0000, header, sizeof(header));
     // Write Text
-    Orbito._nfcDriver.writeBytes(0xFFFF + sizeof(header), (uint8_t*)txt.c_str(), text_len);
+    Orbito._nfcDriver.writeBytes(0x0000 + sizeof(header), (uint8_t*)txt.c_str(), text_len);
     // TLV Ending
     uint8_t term = 0xFE;
-    Orbito._nfcDriver.writeBytes(0xFFFF + sizeof(header) + text_len, &term, 1);
+    Orbito._nfcDriver.writeBytes(0x0000 + sizeof(header) + text_len, &term, 1);
 }
 
 // =============================================================
@@ -1312,4 +1313,36 @@ int16_t* OrbitoRobot::EarModule::capture(int milliseconds)
 void OrbitoRobot::EarModule::release(int16_t* buffer)
 {
     if (buffer != NULL) free(buffer);
+}
+
+// =============================================================
+// 10. External Modules
+// =============================================================
+
+/**
+ * @brief This function inicializate the laser sensor
+ * This function must be called before use the sensor
+ */
+void OrbitoRobot::ExternalModules::LaserModule::begin(){
+    uint8_t payload[] = { Orbito._modules.LaserModule._id_begin };
+    Orbito._ioDriver._sendPacket( Orbito._modules.LaserModule._id_command, payload, 1);
+    uint8_t ack;
+    Orbito._ioDriver._readResponse(&ack, 1);
+}
+
+/**
+ * @brief This function returns the value of the distance measured by the laser sensor
+ * this functios must be used after being used already one time the begin function
+ */
+uint16_t OrbitoRobot::ExternalModules::LaserModule::getDistance(){
+    uint8_t payload[] = { Orbito._modules.LaserModule._id_measure };
+    Orbito._ioDriver._sendPacket(Orbito._modules.LaserModule._id_command, payload, 1);
+    uint8_t buffer[2];
+    delay(1);
+    if (Orbito._ioDriver._readResponse(buffer, 2))
+    {   
+        int laser_value = (uint16_t)( ((uint16_t)buffer[0] << 8) | (uint16_t)buffer[1] );
+        return laser_value;
+    }
+    return -1;
 }

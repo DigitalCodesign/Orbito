@@ -1,0 +1,152 @@
+#######################################
+# Syntax Coloring Map For Orbito
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+Orbito	KEYWORD1
+OrbitoRobot	KEYWORD1
+
+#######################################
+# Methods and Modules (KEYWORD2)
+#######################################
+
+# Main
+
+begin	        KEYWORD2
+update	KEYWORD2
+
+# Sub-Modules
+System	KEYWORD2
+Vision	KEYWORD2
+Display	KEYWORD2
+Action	KEYWORD2
+Brain	KEYWORD2
+Storage	KEYWORD2
+Connect	KEYWORD2
+Remote	KEYWORD2
+Ear	    KEYWORD2
+
+# System Module
+sleep	        KEYWORD2
+hibernate	    KEYWORD2
+restart	        KEYWORD2
+pinMode	        KEYWORD2
+digitalWrite	KEYWORD2
+analogWrite	    KEYWORD2
+digitalRead	    KEYWORD2
+analogRead	    KEYWORD2
+i2cWrite        KEYWORD2
+i2cRead         KEYWORD2
+spiInit         KEYWORD2
+spiTransfer     KEYWORD2
+getButtonStatus	KEYWORD2
+tone            KEYWORD2
+
+# Vision Module
+startWebStream	KEYWORD2
+stopWebStream	KEYWORD2
+snapshot	    KEYWORD2
+release	        KEYWORD2
+setMode	        KEYWORD2
+setResolution   KEYWORD2
+setQuality      KEYWORD2
+setEffect	    KEYWORD2
+setBrightness	KEYWORD2
+setFlip         KEYWORD2
+setNightMode	KEYWORD2
+
+# Display Module
+fillScreen	    KEYWORD2
+drawPixel	    KEYWORD2
+drawLine	    KEYWORD2
+drawRect	    KEYWORD2
+fillRect	    KEYWORD2
+drawCircle	    KEYWORD2
+fillCircle	    KEYWORD2
+drawRoundRect   KEYWORD2
+fillRoundRect   KEYWORD2
+drawTriangle    KEYWORD2
+fillTriangle    KEYWORD2
+print           KEYWORD2
+setCursor	    KEYWORD2
+setTextColor	KEYWORD2
+drawSnapshot	KEYWORD2
+setFont	        KEYWORD2
+drawBitmap      KEYWORD2
+drawEmoji       KEYWORD2
+consoleLog	    KEYWORD2
+setFont         KEYWORD2
+turnOn          KEYWORD2
+turnOff         KEYWORD2
+
+# Action Module
+setExpression	KEYWORD2
+animateEyes	    KEYWORD2
+lookAt	        KEYWORD2
+blink	        KEYWORD2
+say	            KEYWORD2
+
+# Brain Module
+load	        KEYWORD2
+predict	        KEYWORD2
+setThreshold	KEYWORD2
+isLoaded        KEYWORD2
+
+# Storage Module
+writeFile	    KEYWORD2
+appendFile	    KEYWORD2
+readFile	    KEYWORD2
+exists	        KEYWORD2
+remove	        KEYWORD2
+format	        KEYWORD2
+getTotalSpace   KEYWORD2
+getUsedSpace    KEYWORD2
+
+# Connect Module
+connect	            KEYWORD2
+createAP	        KEYWORD2
+getIP	            KEYWORD2
+getSignalQuality	KEYWORD2
+getTime	KEYWORD2    KEYWORD2
+checkUpdates        KEYWORD2
+setWebStatus	    KEYWORD2
+setWebInterface	    KEYWORD2
+onWebCommand	    KEYWORD2
+startWebServer	    KEYWORD2
+
+# Remote Module
+initDashboard	KEYWORD2
+addSwitch	    KEYWORD2
+addSensor	    KEYWORD2
+sendSerial	    KEYWORD2
+onSerialReceive	KEYWORD2
+isFieldPresent	KEYWORD2
+readTagUID	    KEYWORD2
+readTagText	    KEYWORD2
+writeUrl        KEYWORD2
+writeText       KEYWORD2
+
+# Ear Module
+getVolume	KEYWORD2
+capture	    KEYWORD2
+
+#######################################
+# Constants and Literals (LITERAL1)
+#######################################
+
+# Emotions
+NEUTRAL	LITERAL1
+HAPPY	LITERAL1
+SAD	    LITERAL1
+ANGRY	LITERAL1
+SURPRISE	LITERAL1
+SLEEPY	LITERAL1
+WORRY	LITERAL1
+
+# Camera Modes
+MODE_STREAMING	LITERAL1
+MODE_AI	LITERAL1
+MODE_HIGH_RES	LITERAL1
