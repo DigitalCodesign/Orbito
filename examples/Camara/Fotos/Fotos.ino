@@ -1,64 +1,59 @@
 #include <Orbito.h>
 
 void setup() {
-
-    // 1. INICIAR EL MONITOR Y EL ROBOT
     Serial.begin(115200);
-    Orbito.begin(); 
+    
+    // Espera de seguridad para el USB
+    while (!Serial && millis() < 2000) delay(10);
 
-    Orbito.Display.consoleLog("Iniciando...");
-
-    // 2. CONFIGURAR LA CÁMARA
-    // Igual que en tu ejemplo de WiFi pones MODE_STREAMING,
-    // aquí ponemos MODE_AI para obtener formato RGB565 (necesario para display)
+    // Iniciar el sistema completo
+    Orbito.begin();
+    
+    // 1. CONFIGURACIÓN
+    // Ponemos la cámara en modo 'AI' (RGB565).
+    // Tu función drawSnapshot requiere RGB565, así que esto es obligatorio.
     Orbito.Vision.setMode(CameraHandler::MODE_AI);
 
-    // 3. MENSAJE DE LISTO
-    Orbito.Display.consoleLog("CAMARA LISTA");
-    Orbito.Display.consoleLog("Pulsa boton...");
-
+    Orbito.Display.consoleLog("Listo.\nPulsa boton para FOTO");
+    Serial.println("Sistema iniciado en Modo Pantalla (RGB565).");
 }
 
 void loop() {
-
-    // Mantenimiento del sistema
+    // Mantenimiento de tareas de fondo
     Orbito.update();
 
-    // Detección del botón
+    // Al pulsar el botón...
     if (Orbito.System.getButtonStatus()) {
+        
+        // Limpiamos la pantalla (opcional)
+        Orbito.Display.fillScreen(0x0000); 
 
-        Orbito.Display.consoleLog("Capturando...");
-
-        // 1. Limpiar pantalla para pintar la foto limpia
-        Orbito.Display.fillScreen(0x0000);
-
-        // 2. Captura Real
+        // 2. CAPTURAR
+        // Obtenemos la foto cruda (RGB565)
         camera_fb_t* frame = Orbito.Vision.snapshot();
 
         if (frame) {
+            Serial.printf("Captura OK. %u bytes.\n", frame->len);
 
-            // 3. Dibujar
+            // 3. DIBUJAR
+            // ¡Esta es la magia! Usamos tu función nativa.
+            // Ella sola se encarga de intercambiar los bytes de color y pintar.
             Orbito.Display.drawSnapshot(frame);
-            
-            // 4. Liberar Memoria (OBLIGATORIO)
+
+            // 4. LIBERAR MEMORIA
+            // Vital para no bloquear la cámara en la siguiente foto
             Orbito.Vision.release(frame);
-
+            
         } else {
-
-            Orbito.Display.consoleLog("Error captura");
-
+            Orbito.Display.consoleLog("Error: Foto nula");
+            Serial.println("Error: snapshot devolvió NULL");
         }
 
-        delay(2000); // Mantener la foto 2 segundos en pantalla
-        
-        // Restaurar interfaz de texto
-        Orbito.Display.fillScreen(0x0000);
-        Orbito.Display.setCursor(0,0);
+        // Pequeño debounce y espera para ver la foto
+        delay(2000);
         Orbito.Display.consoleLog("Listo para otra.");
         
-        // Esperar a soltar botón para no sacar ráfagas
-        while(Orbito.System.getButtonStatus()) delay(50);
-
+        // Esperamos a que el usuario suelte el botón
+        while(Orbito.System.getButtonStatus()) delay(10);
     }
-
 }

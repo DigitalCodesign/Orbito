@@ -2,7 +2,7 @@
 
 void setup() {
     Orbito.begin();
-    Orbito.Action.setExpression(OrbitoRobot::ActionModule::NEUTRAL);
+    Orbito.Action.setExpression(OrbitoRobot::ActionModule::HAPPY);
 }
 
 void loop() {

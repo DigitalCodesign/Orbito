@@ -1,6 +1,9 @@
 #include <Orbito.h>
 
 void setup() {
+    // Iniciar Serial (USB Nativo)
+    Serial.begin(115200);
+
     // Inicialización obligatoria
     Orbito.begin();
     Orbito.Display.consoleLog("Prueba de Sistema");
