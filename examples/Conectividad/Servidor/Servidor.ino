@@ -1,8 +1,8 @@
 #include <Orbito.h>
 
 // --- CONFIGURACIÓN WIFI ---
-const char* WIFI_SSID = "MiFibra-7D98";
-const char* WIFI_PASS = "NoVFC2RR";
+const char* WIFI_SSID = "TU_WIFI";
+const char* WIFI_PASS = "TU_CLAVE";
 
 // --- INTERFAZ WEB (HTML + JS) ---
 const char* WEB_UI PROGMEM = R"rawliteral(
